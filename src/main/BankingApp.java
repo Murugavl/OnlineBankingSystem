@@ -60,6 +60,27 @@ public class BankingApp
                             transDAO.recordTransaction(userId, "Withdraw", amt);
                         } else System.out.println("Insufficient Balance!");
                     }
+                    else if (opt == 4)
+                    {
+                        sc.nextLine();
+                        System.out.print("Enter receiver email: ");
+                        String receiverEmail = sc.nextLine();
+                        int receiverId = userDAO.getUserIdByEmail(receiverEmail);
+                        if (receiverId == -1)
+                        {
+                            System.out.println("Receiver not found!");
+                            continue;
+                        }
+                        System.out.print("Enter amount to transfer: ");
+                        double amt = sc.nextDouble();
+                        if (userDAO.transferMoney(userId, receiverId, amt))
+                        {
+                            transDAO.recordTransfer(userId, receiverId, amt);
+                            System.out.println("Transfer successful!");
+                        }
+                        else
+                            System.out.println("Transfer failed! Insufficient balance.");
+                    }
                     else break;
                 }
             }
