@@ -37,7 +37,7 @@ public class BankingApp
                 System.out.println("Login Successful!");
                 while (true)
                 {
-                    System.out.println("\n1. View Balance\n2. Deposit\n3. Withdraw\n4. Transfer\n5. Exit");
+                    System.out.println("\n1. View Balance\n2. Deposit\n3. Withdraw\n4. Transfer\n5. Mini Statement\n6. Exit");
                     int opt = sc.nextInt();
                     if (opt == 1)
                         System.out.println("Balance: " + userDAO.getBalance(userId));
@@ -81,6 +81,8 @@ public class BankingApp
                         else
                             System.out.println("Transfer failed! Insufficient balance.");
                     }
+                    else if (opt == 5)
+                        transDAO.showMiniStatement(userId);
                     else break;
                 }
             }

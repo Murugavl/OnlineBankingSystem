@@ -17,4 +17,20 @@ public class TransactionDAO
         recordTransaction(receiverId, "Transfer Received", amount);
     }
 
+    public void showMiniStatement(int userId) throws SQLException {
+        Connection con = DBConnection.getConnection();
+        PreparedStatement ps = con.prepareStatement(
+                "SELECT type, amount, date FROM transactions WHERE user_id=? ORDER BY date ASC LIMIT 5");
+        ps.setInt(1, userId);
+        ResultSet rs = ps.executeQuery();
+        System.out.println("\n--- Mini Statement ---");
+        while (rs.next()) {
+            System.out.println(rs.getString("date") + " | " +
+                    rs.getString("type") + " | " +
+                    rs.getDouble("amount"));
+        }
+    }
+
+
+
 }
