@@ -2,8 +2,6 @@ package dao;
 
 import db.DBConnection;
 import java.sql.*;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.Random;
 
 public class UserDAO {
@@ -26,57 +24,67 @@ public class UserDAO {
         return accountNumber;
     }
 
-    // Hash password using SHA-256
-    public String hashPassword(String password) {
-        try {
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
-            byte[] hashedBytes = md.digest(password.getBytes());
-            StringBuilder sb = new StringBuilder();
-            for (byte b : hashedBytes) sb.append(String.format("%02x", b));
-            return sb.toString();
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException("Error hashing password", e);
-        }
-    }
-
     // Register user
-    public boolean register(String name, String email, String password, String accountNumber) throws SQLException {
+    public boolean register(String name, String email, int pin, String accountNumber) throws SQLException {
         Connection con = DBConnection.getConnection();
-        PreparedStatement ps = con.prepareStatement("INSERT INTO users(name,email,password,account_number,balance) VALUES(?,?,?,?,0)");
+        PreparedStatement ps = con.prepareStatement(
+                "INSERT INTO users(name,email,password,account_number,balance) VALUES(?,?,?,?,0)");
         ps.setString(1, name);
         ps.setString(2, email);
-        ps.setString(3, password);
+        ps.setInt(3, pin);
         ps.setString(4, accountNumber);
         return ps.executeUpdate() > 0;
     }
 
     // Login user
-    public int login(String email, String hashedPassword) throws SQLException {
+    public int login(String email, int pin) throws SQLException {
         Connection con = DBConnection.getConnection();
         PreparedStatement ps = con.prepareStatement("SELECT id FROM users WHERE email=? AND password=?");
         ps.setString(1, email);
-        ps.setString(2, hashedPassword);
+        ps.setInt(2, pin);
         ResultSet rs = ps.executeQuery();
         if (rs.next()) return rs.getInt("id");
         return -1;
     }
 
-    // Verify password before changing PIN
-    public boolean verifyPassword(int userId, String hashedPassword) throws SQLException {
+    // Verify current PIN before changing
+    public boolean verifyPassword(int userId, int pin) throws SQLException {
         Connection con = DBConnection.getConnection();
         PreparedStatement ps = con.prepareStatement("SELECT id FROM users WHERE id=? AND password=?");
         ps.setInt(1, userId);
-        ps.setString(2, hashedPassword);
+        ps.setInt(2, pin);
         ResultSet rs = ps.executeQuery();
         return rs.next();
     }
 
     // Change PIN
-    public boolean changePin(int userId, String newHashedPin) throws SQLException {
+    public boolean changePin(int userId, int newPin) throws SQLException {
         Connection con = DBConnection.getConnection();
         PreparedStatement ps = con.prepareStatement("UPDATE users SET password=? WHERE id=?");
-        ps.setString(1, newHashedPin);
+        ps.setInt(1, newPin);
         ps.setInt(2, userId);
+        return ps.executeUpdate() > 0;
+    }
+
+    // Forgot PIN verification (check if email and account match)
+    public boolean verifyEmailAndAccount(String email, String accountNumber) throws SQLException {
+        Connection con = DBConnection.getConnection();
+        PreparedStatement ps = con.prepareStatement(
+                "SELECT * FROM users WHERE email=? AND account_number=?");
+        ps.setString(1, email);
+        ps.setString(2, accountNumber);
+        ResultSet rs = ps.executeQuery();
+        return rs.next();
+    }
+
+    // Reset PIN after verification
+    public boolean resetPin(String email, String accountNumber, int newPin) throws SQLException {
+        Connection con = DBConnection.getConnection();
+        PreparedStatement ps = con.prepareStatement(
+                "UPDATE users SET password=? WHERE email=? AND account_number=?");
+        ps.setInt(1, newPin);
+        ps.setString(2, email);
+        ps.setString(3, accountNumber);
         return ps.executeUpdate() > 0;
     }
 
@@ -122,7 +130,8 @@ public class UserDAO {
         Connection con = DBConnection.getConnection();
         con.setAutoCommit(false);
         try {
-            PreparedStatement ps1 = con.prepareStatement("UPDATE users SET balance = balance - ? WHERE id=? AND balance >= ?");
+            PreparedStatement ps1 = con.prepareStatement(
+                    "UPDATE users SET balance = balance - ? WHERE id=? AND balance >= ?");
             ps1.setDouble(1, amount);
             ps1.setInt(2, senderId);
             ps1.setDouble(3, amount);
@@ -133,7 +142,8 @@ public class UserDAO {
                 return false;
             }
 
-            PreparedStatement ps2 = con.prepareStatement("UPDATE users SET balance = balance + ? WHERE id=?");
+            PreparedStatement ps2 = con.prepareStatement(
+                    "UPDATE users SET balance = balance + ? WHERE id=?");
             ps2.setDouble(1, amount);
             ps2.setInt(2, receiverId);
             ps2.executeUpdate();
@@ -146,5 +156,15 @@ public class UserDAO {
         } finally {
             con.setAutoCommit(true);
         }
+    }
+
+    // Check if PIN is unique
+    public boolean isPinUnique(int pin) throws SQLException {
+        Connection con = DBConnection.getConnection();
+        PreparedStatement ps = con.prepareStatement("SELECT COUNT(*) FROM users WHERE password=?");
+        ps.setInt(1, pin);
+        ResultSet rs = ps.executeQuery();
+        if (rs.next()) return rs.getInt(1) == 0;
+        return false;
     }
 }

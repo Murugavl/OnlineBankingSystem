@@ -11,7 +11,7 @@ public class BankingApp {
         System.out.println("WELCOME TO VEL's BANK");
 
         while (true) {
-            System.out.println("\n1. Register\n2. Login\n3. Exit");
+            System.out.println("\n1. Register\n2. Login\n3. Forgot PIN\n4. Exit");
             int choice = sc.nextInt();
             sc.nextLine();
 
@@ -20,13 +20,21 @@ public class BankingApp {
                 String name = sc.nextLine();
                 System.out.print("Enter Email: ");
                 String email = sc.nextLine();
-                System.out.print("Enter Pin: ");
-                String pass = sc.nextLine();
 
-                String hashedPass = userDAO.hashPassword(pass);
+                int pin;
+                while (true) {
+                    System.out.print("Enter a 4-digit PIN: ");
+                    pin = sc.nextInt();
+                    if (String.valueOf(pin).length() == 4) {
+                        if (userDAO.isPinUnique(pin)) break;
+                        else System.out.println("PIN already in use. Try a different one.");
+                    } else {
+                        System.out.println("PIN must be exactly 4 digits.");
+                    }
+                }
+
                 String accountNumber = userDAO.generateAccountNumber();
-
-                if (userDAO.register(name, email, hashedPass, accountNumber)) {
+                if (userDAO.register(name, email, pin, accountNumber)) {
                     System.out.println("\nRegistration Successful!");
                     System.out.println("Your Account Number: " + accountNumber);
                     System.out.println("\n1. Back to Login\n2. Exit");
@@ -42,12 +50,10 @@ public class BankingApp {
             else if (choice == 2) {
                 System.out.print("Enter Email: ");
                 String email = sc.nextLine();
-                System.out.print("Enter Pin: ");
-                String pass = sc.nextLine();
+                System.out.print("Enter PIN: ");
+                int pin = sc.nextInt();
 
-                String hashedPass = userDAO.hashPassword(pass);
-                int userId = userDAO.login(email, hashedPass);
-
+                int userId = userDAO.login(email, pin);
                 if (userId != -1) {
                     System.out.println("Login Successful!");
 
@@ -99,16 +105,19 @@ public class BankingApp {
                             transDAO.showMiniStatement(userId);
 
                         else if (opt == 6) {
-                            sc.nextLine();
                             System.out.print("Enter old PIN: ");
-                            String oldPin = sc.nextLine();
-                            String hashedOld = userDAO.hashPassword(oldPin);
-
-                            if (userDAO.verifyPassword(userId, hashedOld)) {
-                                System.out.print("Enter new PIN: ");
-                                String newPin = sc.nextLine();
-                                String hashedNew = userDAO.hashPassword(newPin);
-                                userDAO.changePin(userId, hashedNew);
+                            int oldPin = sc.nextInt();
+                            if (userDAO.verifyPassword(userId, oldPin)) {
+                                int newPin;
+                                while (true) {
+                                    System.out.print("Enter new 4-digit PIN: ");
+                                    newPin = sc.nextInt();
+                                    if (String.valueOf(newPin).length() == 4) {
+                                        if (userDAO.isPinUnique(newPin)) break;
+                                        else System.out.println("PIN already in use. Try again.");
+                                    } else System.out.println("PIN must be 4 digits.");
+                                }
+                                userDAO.changePin(userId, newPin);
                                 System.out.println("PIN changed successfully!");
                             } else {
                                 System.out.println("Incorrect old PIN!");
@@ -130,6 +139,29 @@ public class BankingApp {
                         else break;
                     }
                 } else System.out.println("Invalid credentials!");
+            }
+
+            else if (choice == 3) {
+                System.out.print("Enter your registered Email: ");
+                String email = sc.nextLine();
+                System.out.print("Enter your Account Number: ");
+                String acc = sc.nextLine();
+
+                if (userDAO.verifyEmailAndAccount(email, acc)) {
+                    int newPin;
+                    while (true) {
+                        System.out.print("Enter new 4-digit PIN: ");
+                        newPin = sc.nextInt();
+                        if (String.valueOf(newPin).length() == 4) {
+                            if (userDAO.isPinUnique(newPin)) break;
+                            else System.out.println("PIN already in use. Try again.");
+                        } else System.out.println("PIN must be exactly 4 digits.");
+                    }
+                    userDAO.resetPin(email, acc, newPin);
+                    System.out.println("PIN reset successful!");
+                } else {
+                    System.out.println("Invalid email or account number!");
+                }
             }
 
             else {
