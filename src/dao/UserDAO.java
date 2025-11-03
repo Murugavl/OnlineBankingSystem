@@ -2,15 +2,36 @@ package dao;
 
 import db.DBConnection;
 import java.sql.*;
+import java.util.Random;
 
-public class UserDAO
-{
-    public boolean register(String name, String email, String password) throws SQLException {
+public class UserDAO {
+
+    // Generate 16-digit unique account number
+    public String generateAccountNumber() throws SQLException {
         Connection con = DBConnection.getConnection();
-        PreparedStatement ps = con.prepareStatement("INSERT INTO users(name,email,password,balance) VALUES(?,?,?,0)");
+        Random random = new Random();
+        String accountNumber;
+
+        while (true) {
+            long randomPart = (long) (random.nextDouble() * 1000000000000L);
+            accountNumber = "2005" + String.format("%012d", randomPart);
+
+            PreparedStatement ps = con.prepareStatement("SELECT * FROM users WHERE account_number=?");
+            ps.setString(1, accountNumber);
+            ResultSet rs = ps.executeQuery();
+            if (!rs.next()) break; // ensure unique
+        }
+        return accountNumber;
+    }
+
+    // Registration with auto account number
+    public boolean register(String name, String email, String password, String accountNumber) throws SQLException {
+        Connection con = DBConnection.getConnection();
+        PreparedStatement ps = con.prepareStatement("INSERT INTO users(name,email,password,account_number,balance) VALUES(?,?,?,?,0)");
         ps.setString(1, name);
         ps.setString(2, email);
         ps.setString(3, password);
+        ps.setString(4, accountNumber);
         return ps.executeUpdate() > 0;
     }
 
@@ -41,10 +62,10 @@ public class UserDAO
         return ps.executeUpdate() > 0;
     }
 
-    public int getUserIdByEmail(String email) throws SQLException {
+    public int getUserIdByAccountNumber(String accountNumber) throws SQLException {
         Connection con = DBConnection.getConnection();
-        PreparedStatement ps = con.prepareStatement("SELECT id FROM users WHERE email=?");
-        ps.setString(1, email);
+        PreparedStatement ps = con.prepareStatement("SELECT id FROM users WHERE account_number=?");
+        ps.setString(1, accountNumber);
         ResultSet rs = ps.executeQuery();
         if (rs.next()) return rs.getInt("id");
         return -1;
@@ -79,5 +100,4 @@ public class UserDAO
             con.setAutoCommit(true);
         }
     }
-
 }
