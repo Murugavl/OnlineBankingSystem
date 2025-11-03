@@ -2,11 +2,13 @@ package dao;
 
 import db.DBConnection;
 import java.sql.*;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Random;
 
 public class UserDAO {
 
-    // Generate 16-digit unique account number
+    // Generate unique 16-digit account number
     public String generateAccountNumber() throws SQLException {
         Connection con = DBConnection.getConnection();
         Random random = new Random();
@@ -19,12 +21,25 @@ public class UserDAO {
             PreparedStatement ps = con.prepareStatement("SELECT * FROM users WHERE account_number=?");
             ps.setString(1, accountNumber);
             ResultSet rs = ps.executeQuery();
-            if (!rs.next()) break; // ensure unique
+            if (!rs.next()) break;
         }
         return accountNumber;
     }
 
-    // Registration with auto account number
+    // Hash password using SHA-256
+    public String hashPassword(String password) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] hashedBytes = md.digest(password.getBytes());
+            StringBuilder sb = new StringBuilder();
+            for (byte b : hashedBytes) sb.append(String.format("%02x", b));
+            return sb.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("Error hashing password", e);
+        }
+    }
+
+    // Register user
     public boolean register(String name, String email, String password, String accountNumber) throws SQLException {
         Connection con = DBConnection.getConnection();
         PreparedStatement ps = con.prepareStatement("INSERT INTO users(name,email,password,account_number,balance) VALUES(?,?,?,?,0)");
@@ -35,16 +50,45 @@ public class UserDAO {
         return ps.executeUpdate() > 0;
     }
 
-    public int login(String email, String password) throws SQLException {
+    // Login user
+    public int login(String email, String hashedPassword) throws SQLException {
         Connection con = DBConnection.getConnection();
         PreparedStatement ps = con.prepareStatement("SELECT id FROM users WHERE email=? AND password=?");
         ps.setString(1, email);
-        ps.setString(2, password);
+        ps.setString(2, hashedPassword);
         ResultSet rs = ps.executeQuery();
         if (rs.next()) return rs.getInt("id");
         return -1;
     }
 
+    // Verify password before changing PIN
+    public boolean verifyPassword(int userId, String hashedPassword) throws SQLException {
+        Connection con = DBConnection.getConnection();
+        PreparedStatement ps = con.prepareStatement("SELECT id FROM users WHERE id=? AND password=?");
+        ps.setInt(1, userId);
+        ps.setString(2, hashedPassword);
+        ResultSet rs = ps.executeQuery();
+        return rs.next();
+    }
+
+    // Change PIN
+    public boolean changePin(int userId, String newHashedPin) throws SQLException {
+        Connection con = DBConnection.getConnection();
+        PreparedStatement ps = con.prepareStatement("UPDATE users SET password=? WHERE id=?");
+        ps.setString(1, newHashedPin);
+        ps.setInt(2, userId);
+        return ps.executeUpdate() > 0;
+    }
+
+    // Close account
+    public boolean closeAccount(int userId) throws SQLException {
+        Connection con = DBConnection.getConnection();
+        PreparedStatement ps = con.prepareStatement("DELETE FROM users WHERE id=?");
+        ps.setInt(1, userId);
+        return ps.executeUpdate() > 0;
+    }
+
+    // Get balance
     public double getBalance(int userId) throws SQLException {
         Connection con = DBConnection.getConnection();
         PreparedStatement ps = con.prepareStatement("SELECT balance FROM users WHERE id=?");
@@ -54,6 +98,7 @@ public class UserDAO {
         return 0;
     }
 
+    // Update balance
     public boolean updateBalance(int userId, double newBalance) throws SQLException {
         Connection con = DBConnection.getConnection();
         PreparedStatement ps = con.prepareStatement("UPDATE users SET balance=? WHERE id=?");
@@ -62,6 +107,7 @@ public class UserDAO {
         return ps.executeUpdate() > 0;
     }
 
+    // Get userId by account number
     public int getUserIdByAccountNumber(String accountNumber) throws SQLException {
         Connection con = DBConnection.getConnection();
         PreparedStatement ps = con.prepareStatement("SELECT id FROM users WHERE account_number=?");
@@ -71,6 +117,7 @@ public class UserDAO {
         return -1;
     }
 
+    // Transfer money between users
     public boolean transferMoney(int senderId, int receiverId, double amount) throws SQLException {
         Connection con = DBConnection.getConnection();
         con.setAutoCommit(false);
@@ -83,7 +130,7 @@ public class UserDAO {
 
             if (senderUpdated == 0) {
                 con.rollback();
-                return false; // insufficient funds
+                return false;
             }
 
             PreparedStatement ps2 = con.prepareStatement("UPDATE users SET balance = balance + ? WHERE id=?");

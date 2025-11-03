@@ -1,22 +1,28 @@
 package dao;
+
 import db.DBConnection;
 import java.sql.*;
-public class TransactionDAO
-{
-    public void recordTransaction(int userId, String type, double amount) throws SQLException
-    {
-            Connection con = DBConnection.getConnection();
-            PreparedStatement ps = con.prepareStatement("INSERT INTO transactions(user_id, type, amount) VALUES(?,?,?)");
-            ps.setInt(1, userId);
-            ps.setString(2, type);
-            ps.setDouble(3, amount);
-            ps.executeUpdate();
+
+public class TransactionDAO {
+
+    // Record deposit/withdraw/transfer transactions
+    public void recordTransaction(int userId, String type, double amount) throws SQLException {
+        Connection con = DBConnection.getConnection();
+        PreparedStatement ps = con.prepareStatement(
+                "INSERT INTO transactions(user_id, type, amount, date) VALUES(?,?,?,NOW())");
+        ps.setInt(1, userId);
+        ps.setString(2, type);
+        ps.setDouble(3, amount);
+        ps.executeUpdate();
     }
+
+    // Record both sender and receiver sides for transfer
     public void recordTransfer(int senderId, int receiverId, double amount) throws SQLException {
         recordTransaction(senderId, "Transfer Sent", amount);
         recordTransaction(receiverId, "Transfer Received", amount);
     }
 
+    // Display latest 5 transactions (in ascending order by date)
     public void showMiniStatement(int userId) throws SQLException {
         Connection con = DBConnection.getConnection();
         PreparedStatement ps = con.prepareStatement(
@@ -31,6 +37,11 @@ public class TransactionDAO
         }
     }
 
-
-
+    // Delete all transactions of a user (used during account closure)
+    public void deleteUserTransactions(int userId) throws SQLException {
+        Connection con = DBConnection.getConnection();
+        PreparedStatement ps = con.prepareStatement("DELETE FROM transactions WHERE user_id=?");
+        ps.setInt(1, userId);
+        ps.executeUpdate();
+    }
 }
