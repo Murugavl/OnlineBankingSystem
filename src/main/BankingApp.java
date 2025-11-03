@@ -37,7 +37,7 @@ public class BankingApp
                 System.out.println("Login Successful!");
                 while (true)
                 {
-                    System.out.println("\n1. View Balance\n2. Deposit\n3. Withdraw\n4. Exit");
+                    System.out.println("\n1. View Balance\n2. Deposit\n3. Withdraw\n4. Transfer\n5. Exit");
                     int opt = sc.nextInt();
                     if (opt == 1)
                         System.out.println("Balance: " + userDAO.getBalance(userId));
