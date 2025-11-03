@@ -1,7 +1,6 @@
 package dao;
 
 import db.DBConnection;
-
 import java.sql.*;
 
 public class UserDAO
@@ -41,4 +40,44 @@ public class UserDAO
         ps.setInt(2, userId);
         return ps.executeUpdate() > 0;
     }
+
+    public int getUserIdByEmail(String email) throws SQLException {
+        Connection con = DBConnection.getConnection();
+        PreparedStatement ps = con.prepareStatement("SELECT id FROM users WHERE email=?");
+        ps.setString(1, email);
+        ResultSet rs = ps.executeQuery();
+        if (rs.next()) return rs.getInt("id");
+        return -1;
+    }
+
+    public boolean transferMoney(int senderId, int receiverId, double amount) throws SQLException {
+        Connection con = DBConnection.getConnection();
+        con.setAutoCommit(false);
+        try {
+            PreparedStatement ps1 = con.prepareStatement("UPDATE users SET balance = balance - ? WHERE id=? AND balance >= ?");
+            ps1.setDouble(1, amount);
+            ps1.setInt(2, senderId);
+            ps1.setDouble(3, amount);
+            int senderUpdated = ps1.executeUpdate();
+
+            if (senderUpdated == 0) {
+                con.rollback();
+                return false; // insufficient funds
+            }
+
+            PreparedStatement ps2 = con.prepareStatement("UPDATE users SET balance = balance + ? WHERE id=?");
+            ps2.setDouble(1, amount);
+            ps2.setInt(2, receiverId);
+            ps2.executeUpdate();
+
+            con.commit();
+            return true;
+        } catch (Exception e) {
+            con.rollback();
+            throw e;
+        } finally {
+            con.setAutoCommit(true);
+        }
+    }
+
 }

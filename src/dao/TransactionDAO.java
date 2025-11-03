@@ -11,6 +11,10 @@ public class TransactionDAO
             ps.setString(2, type);
             ps.setDouble(3, amount);
             ps.executeUpdate();
-
     }
+    public void recordTransfer(int senderId, int receiverId, double amount) throws SQLException {
+        recordTransaction(senderId, "Transfer Sent", amount);
+        recordTransaction(receiverId, "Transfer Received", amount);
+    }
+
 }
